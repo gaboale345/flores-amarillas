@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Árbol de Flores Amarillas</title>
+  <style>
+    /* ========================================================
+       ESTILOS Y ESCENARIO ROMÁNTICO CENTRADO
+       ======================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, #7a0943 0%, #440324 55%, #19000e 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Canvas de fondo ambiental (Bokeh y corazones flotantes) */
+    #bgCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Marco romántico centrado para el árbol */
+    .card-container {
+      position: relative;
+      z-index: 5;
+      width: 94vw;
+      max-width: 900px;
+      height: 92vh;
+      max-height: 850px;
+      background: linear-gradient(135deg, #fffbf2 0%, #faede1 50%, #f7e6d6 100%);
+      border-radius: 36px;
+      box-shadow: 
+        0 25px 70px rgba(0, 0, 0, 0.55),
+        0 0 50px rgba(255, 105, 180, 0.25),
+        inset 0 0 20px rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(255, 225, 238, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    /* Canvas principal del árbol de corazón */
+    #treeCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Botones de acción flotantes minimalistas (sin texto) */
+    .floating-controls {
+      position: absolute;
+      bottom: 24px;
+      right: 28px;
+      z-index: 10;
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #b45309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      transition: all 0.25s ease;
+      outline: none;
+    }
+
+    .ctrl-btn:hover {
+      transform: translateY(-2px) scale(1.08);
+      background: #fff8e1;
+      border-color: #f59e0b;
+      box-shadow: 0 6px 18px rgba(245, 158, 11, 0.35);
+    }
+
+    /* Pequeña insignia de pareja minimalista en la esquina izquierda */
+    .corner-badge {
+      position: absolute;
+      bottom: 24px;
+      left: 28px;
+      z-index: 10;
+      background: rgba(85, 33, 20, 0.82);
+      backdrop-filter: blur(8px);
+      padding: 8px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border: 1px solid rgba(255, 220, 180, 0.2);
+      pointer-events: none;
+      opacity: 0.88;
+    }
+
+    .couple-icon {
+      width: 26px;
+      height: 26px;
+      fill: #ffcf75;
+    }
+
+    @media (max-width: 600px) {
+      .card-container {
+        width: 96vw;
+        height: 94vh;
+        border-radius: 26px;
+      }
+      .floating-controls {
+        bottom: 16px;
+        right: 16px;
+        gap: 8px;
+      }
+      .ctrl-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+      }
+      .corner-badge {
+        bottom: 16px;
+        left: 16px;
+        padding: 6px 10px;
+      }
+      .couple-icon {
+        width: 22px;
+        height: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Canvas de fondo para partículas mágicas, bokeh y corazones celestiales -->
+  <canvas id="bgCanvas"></canvas>
+
+  <!-- Contenedor centrado para el Árbol de Flores Amarillas -->
+  <div class="card-container" id="cardContainer">
+    <canvas id="treeCanvas"></canvas>
+
+    <!-- Insignia minimalista de amor en esquina inferior izquierda -->
+    <div class="corner-badge">
+      <svg class="couple-icon" viewBox="0 0 64 64">
+        <path d="M18 48 C16 40 18 28 26 24 C30 22 34 26 31 34 C30 38 28 42 27 48 Z" />
+        <path d="M46 48 C48 40 46 28 38 24 C34 22 30 26 33 34 C34 38 36 42 37 48 Z" />
+        <circle cx="27" cy="20" r="8" opacity="0.9"/>
+        <circle cx="37" cy="20" r="8" opacity="0.9"/>
+        <path d="M32 10 C29 6 22 6 22 12 C22 18 32 23 32 23 C32 23 42 18 42 12 C42 6 35 6 32 10 Z" fill="#ff4081"/>
+      </svg>
+    </div>
+
+    <!-- Controles flotantes sin texto: música y reiniciar -->
+    <div class="floating-controls">
+      <button class="ctrl-btn" id="musicBtn" title="Música romántica" aria-label="Música">
+        <span id="musicIcon">🎵</span>
+      </button>
+      <button class="ctrl-btn" id="restartBtn" title="Revivir florecimiento" aria-label="Reiniciar">
+        🌻
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       OPTIMIZACIÓN ALTA VELOCIDAD A 60 FPS
+       - Pre-renderizado de Sprites en Offscreen Canvas
+       - Eliminación de recalculo de gradientes/shadowBlur por frame
+       - Árbol perfectamente centrado horizontal y verticalmente
+       ======================================================== */
+
+    // --- 1. CANVAS DE FONDO (BOKEH Y CORAZONES FLOTANTES) ---
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    let bgWidth, bgHeight;
+
+    function resizeBgCanvas() {
+      bgWidth = bgCanvas.width = window.innerWidth;
+      bgHeight = bgCanvas.height = window.innerHeight;
+    }
+    resizeBgCanvas();
+
+    const bgParticles = [];
+    const MAX_BG_PARTICLES = 40;
+
+    class RomanticParticle {
+      constructor() {
+        this.reset(true);
+      }
+      reset(initial = false) {
+        this.x = Math.random() * bgWidth;
+        this.y = initial ? Math.random() * bgHeight : bgHeight + 25;
+        this.size = 10 + Math.random() * 22;
+        this.speedY = 0.35 + Math.random() * 0.75;
+        this.speedX = (Math.random() - 0.5) * 0.4;
+        this.opacity = 0.12 + Math.random() * 0.28;
+        this.isHeart = Math.random() > 0.45;
+        this.angle = Math.random() * Math.PI * 2;
+        this.spin = (Math.random() - 0.5) * 0.02;
+        const colors = [
+          'rgba(255, 182, 193, ',
+          'rgba(255, 105, 180, ',
+          'rgba(255, 223, 100, ',
+          'rgba(255, 240, 180, '
+        ];
+        this.baseColor = colors[Math.floor(Math.random() * colors.length)];
+      }
+      update() {
+        this.y -= this.speedY;
+        this.x += Math.sin(this.angle) * 0.5 + this.speedX;
+        this.angle += 0.015;
+        this.rotation = (this.rotation || 0) + this.spin;
+        if (this.y < -35 || this.x < -30 || this.x > bgWidth + 30) {
+          this.reset(false);
+        }
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation || 0);
+        ctx.fillStyle = this.baseColor + this.opacity + ')';
+
+        if (this.isHeart) {
+          const s = this.size * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(0, s * 0.3);
+          ctx.bezierCurveTo(-s * 0.7, -s * 0.5, -s * 1.2, s * 0.3, 0, s * 1.1);
+          ctx.bezierCurveTo(s * 1.2, s * 0.3, s * 0.7, -s * 0.5, 0, s * 0.3);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, this.size * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    for (let i = 0; i < MAX_BG_PARTICLES; i++) {
+      bgParticles.push(new RomanticParticle());
+    }
+
+    function renderBackground() {
+      bgCtx.clearRect(0, 0, bgWidth, bgHeight);
+      for (let i = 0; i < bgParticles.length; i++) {
+        bgParticles[i].update();
+        bgParticles[i].draw(bgCtx);
+      }
+      requestAnimationFrame(renderBackground);
+    }
+    renderBackground();
+
+
+    // --- 2. PRE-RENDERIZADO DE SPRITES EN OFFSCREEN CANVAS (ULTRA 60 FPS) ---
+    /*
+      En lugar de calcular sombras intensivas (shadowBlur) y gradientes en cada flor en cada cuadro,
+      pre-renderizamos 6 variedades de flores amarillas y pétalos en lienzos offscreen de alta resolución.
+      Durante el ciclo de 60fps, el navegador solo realiza ctx.drawImage (acelerado por GPU).
+    */
+    const flowerSprites = [];
+    const petalSprites = [];
+    const SPRITE_SIZE = 96; // Tamaño base de alta definición
+    const SPRITE_HALF = SPRITE_SIZE / 2;
+
+    function generateFlowerSprites() {
+      flowerSprites.length = 0;
+      petalSprites.length = 0;
+
+      // 6 variaciones de girasoles/margaritas doradas
+      const configs = [
+        { petals: 11, pColor: '#ffca28', pTip: '#fff9c4', cColor: '#4a2505', glow: '#ffb300' },
+        { petals: 12, pColor: '#ffd54f', pTip: '#ffffff', cColor: '#5d2d08', glow: '#ffa000' },
+        { petals: 13, pColor: '#ffc107', pTip: '#fff59d', cColor: '#3e1e04', glow: '#ffc107' },
+        { petals: 10, pColor: '#ffca28', pTip: '#fff176', cColor: '#542907', glow: '#ff9800' },
+        { petals: 14, pColor: '#ffb300', pTip: '#fffde7', cColor: '#431f03', glow: '#ffa726' },
+        { petals: 12, pColor: '#ffcc00', pTip: '#ffff8d', cColor: '#4f2405', glow: '#ffb300' }
+      ];
+
+      configs.forEach((cfg) => {
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = SPRITE_SIZE;
+        offCanvas.height = SPRITE_SIZE;
+        const oCtx = offCanvas.getContext('2d');
+
+        const radius = SPRITE_HALF * 0.65;
+        const cx = SPRITE_HALF;
+        const cy = SPRITE_HALF;
+
+        oCtx.save();
+        oCtx.translate(cx, cy);
+
+        // Resplandor cálido precalculado una sola vez
+        oCtx.shadowColor = cfg.glow;
+        oCtx.shadowBlur = 10;
+
+        const petalLen = radius * 1.35;
+        const petalW = radius * 0.44;
+
+        // Pétalos
+        for (let i = 0; i < cfg.petals; i++) {
+          const angle = (i * 2 * Math.PI) / cfg.petals;
+          oCtx.save();
+          oCtx.rotate(angle);
+
+          const grad = oCtx.createLinearGradient(0, 0, 0, petalLen);
+          grad.addColorStop(0, '#f59e0b');
+          grad.addColorStop(0.4, cfg.pColor);
+          grad.addColorStop(1, cfg.pTip);
+
+          oCtx.fillStyle = grad;
+          oCtx.beginPath();
+          oCtx.moveTo(0, radius * 0.3);
+          oCtx.quadraticCurveTo(petalW, petalLen * 0.6, 0, petalLen);
+          oCtx.quadraticCurveTo(-petalW, petalLen * 0.6, 0, radius * 0.3);
+          oCtx.fill();
+          oCtx.restore();
+        }
+
+        // Centro aterciopelado
+        oCtx.shadowBlur = 0;
+        const cGrad = oCtx.createRadialGradient(0, 0, radius * 0.1, 0, 0, radius * 0.52);
+        cGrad.addColorStop(0, '#793910');
+        cGrad.addColorStop(0.7, cfg.cColor);
+        cGrad.addColorStop(1, '#2c1202');
+
+        oCtx.fillStyle = cGrad;
+        oCtx.beginPath();
+        oCtx.arc(0, 0, radius * 0.52, 0, Math.PI * 2);
+        oCtx.fill();
+
+        // Corona de estambres dorados
+        oCtx.fillStyle = '#ffb300';
+        const stamenCount = 8;
+        const stamenR = radius * 0.33;
+        for (let s = 0; s < stamenCount; s++) {
+          const sa = (s * 2 * Math.PI) / stamenCount;
+          oCtx.beginPath();
+          oCtx.arc(Math.cos(sa) * stamenR, Math.sin(sa) * stamenR, radius * 0.08, 0, Math.PI * 2);
+          oCtx.fill();
+        }
+
+        oCtx.restore();
+        flowerSprites.push(offCanvas);
+      });
+
+      // Sprites de pétalos sueltos
+      for (let p = 0; p < 3; p++) {
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = 40;
+        pCanvas.height = 40;
+        const pCtx = pCanvas.getContext('2d');
+        pCtx.translate(20, 20);
+        pCtx.fillStyle = p === 0 ? '#ffca28' : (p === 1 ? '#ffd54f' : '#ffc107');
+        pCtx.beginPath();
+        pCtx.ellipse(0, 0, 7, 14, 0, 0, Math.PI * 2);
+        pCtx.fill();
+        petalSprites.push(pCanvas);
+      }
+    }
+    generateFlowerSprites();
+
+
+    // --- 3. CONFIGURACIÓN DEL CANVAS DEL ÁRBOL CENTRADO ---
+    const treeCanvas = document.getElementById('treeCanvas');
+    const treeCtx = treeCanvas.getContext('2d');
+    const cardContainer = document.getElementById('cardContainer');
+
+    let treeW, treeH;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2); // Capped at 2 for performance
+
+    function resizeTreeCanvas() {
+      const rect = cardContainer.getBoundingClientRect();
+      treeW = rect.width;
+      treeH = rect.height;
+      treeCanvas.width = treeW * dpr;
+      treeCanvas.height = treeH * dpr;
+      treeCtx.resetTransform ? treeCtx.resetTransform() : treeCtx.setTransform(1,0,0,1,0,0);
+      treeCtx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeBgCanvas();
+      resizeTreeCanvas();
+      initTree();
+    });
+
+
+    // --- 4. ESTRUCTURA Y CRECIMIENTO DEL ÁRBOL EN EL CENTRO ---
+    let animationState = {
+      progressBranches: 0,
+      branchesDone: false,
+      progressLeaves: 0,
+      leavesDone: false,
+      flowerIndex: 0,
+      flowersBlooming: true,
+      treeCompleted: false
+    };
+
+    let branchSegments = [];
+    let treeLeaves = [];
+    let treeFlowers = [];
+    let fallingFlowers = [];
+    let clickSparks = [];
+
+    // Fórmula matemática paramétrica de corazón
+    function getHeartPoint(scale, offsetX, offsetY) {
+      const t = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random());
+      const rawX = 16 * Math.pow(Math.sin(t), 3);
+      const rawY = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      return {
+        x: offsetX + rawX * scale * r,
+        y: offsetY + rawY * scale * r
+      };
+    }
+
+    function createTreeBranchStructure(baseX, baseY, targetHeartCenter, heartScale) {
+      branchSegments = [];
+      treeLeaves = [];
+      treeFlowers = [];
+
+      function addBranch(x1, y1, angle, length, thickness, depth, maxDepth) {
+        const x2 = x1 + Math.cos(angle) * length;
+        const y2 = y1 + Math.sin(angle) * length;
+
+        branchSegments.push({
+          x1, y1, x2, y2,
+          thickness,
+          depth,
+          color: depth < 2 ? '#4a260d' : (depth < 4 ? '#633716' : '#7b461e')
+        });
+
+        if (depth < maxDepth) {
+          const subBranches = depth === 0 ? 3 : (Math.random() > 0.3 ? 2 : 3);
+          for (let i = 0; i < subBranches; i++) {
+            const spread = 0.50 - depth * 0.06;
+            let nextAngle = angle + (Math.random() - 0.5) * spread * 2;
+            
+            // Guiar ramas armónicamente hacia la silueta del corazón
+            if (x2 < targetHeartCenter.x) {
+              nextAngle = Math.min(nextAngle, -Math.PI * 0.46);
+              nextAngle = Math.max(nextAngle, -Math.PI * 0.84);
+            } else {
+              nextAngle = Math.max(nextAngle, -Math.PI * 0.54);
+              nextAngle = Math.min(nextAngle, -Math.PI * 0.16);
+            }
+
+            const nextLength = length * (0.64 + Math.random() * 0.18);
+            const nextThick = Math.max(2, thickness * 0.65);
+            addBranch(x2, y2, nextAngle, nextLength, nextThick, depth + 1, maxDepth);
+          }
+        } else {
+          // Hojas verdes en brotes
+          for (let l = 0; l < 3; l++) {
+            treeLeaves.push({
+              x: x2 + (Math.random() - 0.5) * 16,
+              y: y2 + (Math.random() - 0.5) * 16,
+              angle: Math.random() * Math.PI * 2,
+              scale: 0,
+              maxScale: 5 + Math.random() * 4,
+              color: Math.random() > 0.5 ? '#558b2f' : '#689f38'
+            });
+          }
+        }
+      }
+
+      // Tronco centrado proporcional al alto de pantalla
+      const trunkLength = treeH * 0.22;
+      addBranch(baseX, baseY, -Math.PI / 2, trunkLength, 22, 0, 5);
+
+      // Generar 430 flores amarillas tupidas formando el corazón perfecto
+      const TOTAL_HEART_FLOWERS = 430;
+      for (let i = 0; i < TOTAL_HEART_FLOWERS; i++) {
+        let pt;
+        // 32% refuerzan el perímetro del corazón para una silueta nítida
+        if (i < 140) {
+          const t = (i / 140) * Math.PI * 2;
+          const rawX = 16 * Math.pow(Math.sin(t), 3);
+          const rawY = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+          const jitter = 0.94 + Math.random() * 0.10;
+          pt = {
+            x: targetHeartCenter.x + rawX * heartScale * jitter + (Math.random() - 0.5) * 3,
+            y: targetHeartCenter.y + rawY * heartScale * jitter + (Math.random() - 0.5) * 3
+          };
+        } else {
+          // Relleno interior uniforme
+          pt = getHeartPoint(heartScale * 0.95, targetHeartCenter.x, targetHeartCenter.y);
+        }
+
+        const spriteIdx = Math.floor(Math.random() * flowerSprites.length);
+        const targetRadius = 9 + Math.random() * 10;
+
+        treeFlowers.push({
+          x: pt.x,
+          y: pt.y,
+          sprite: flowerSprites[spriteIdx],
+          size: targetRadius * 2, // tamaño en píxeles al dibujar
+          currentScale: 0,
+          rotation: Math.random() * Math.PI * 2,
+          bloomed: false,
+          bloomSpeed: 0.05 + Math.random() * 0.05,
+          shimmerPhase: Math.random() * Math.PI * 2
+        });
+      }
+
+      // Ordenar flores de adentro hacia afuera para un florecimiento orgánico
+      treeFlowers.sort((a, b) => {
+        const distA = Math.hypot(a.x - targetHeartCenter.x, a.y - targetHeartCenter.y);
+        const distB = Math.hypot(b.x - targetHeartCenter.x, b.y - targetHeartCenter.y);
+        return distA - distB;
+      });
+    }
+
+    function initTree() {
+      // Centrado exacto: la copa del corazón queda armónicamente en el centro visual
+      const targetHeartCenter = {
+        x: treeW * 0.5,
+        y: treeH * 0.42
+      };
+      const baseX = treeW * 0.5;
+      const baseY = treeH * 0.92;
+      const heartScale = Math.min(treeW, treeH) * 0.023;
+
+      createTreeBranchStructure(baseX, baseY, targetHeartCenter, heartScale);
+
+      animationState = {
+        progressBranches: 0,
+        branchesDone: false,
+        progressLeaves: 0,
+        leavesDone: false,
+        flowerIndex: 0,
+        flowersBlooming: true,
+        treeCompleted: false
+      };
+
+      fallingFlowers = [];
+      clickSparks = [];
+    }
+
+
+    // --- 5. SISTEMA DE FLORES CAYENDO (FALLING FLOWERS OPTIMIZADO) ---
+    class FallingYellowFlower {
+      constructor(isBurst = false, burstX = 0, burstY = 0) {
+        this.reset(isBurst, burstX, burstY);
+      }
+
+      reset(isBurst = false, burstX = 0, burstY = 0) {
+        if (isBurst) {
+          this.x = burstX;
+          this.y = burstY;
+          this.vy = (Math.random() - 0.7) * 4;
+          this.vx = (Math.random() - 0.5) * 4.5;
+        } else {
+          // Desprenderse desde la copa del corazón centrada
+          if (treeFlowers.length > 0) {
+            const src = treeFlowers[Math.floor(Math.random() * treeFlowers.length)];
+            this.x = src.x + (Math.random() - 0.5) * 16;
+            this.y = src.y + (Math.random() - 0.5) * 16;
+          } else {
+            this.x = treeW * 0.5 + (Math.random() - 0.5) * treeW * 0.5;
+            this.y = treeH * 0.25;
+          }
+          this.vy = 1.0 + Math.random() * 1.6;
+          this.vx = (Math.random() - 0.5) * 1.1;
+        }
+
+        this.isPetalOnly = Math.random() > 0.72;
+        if (this.isPetalOnly) {
+          this.sprite = petalSprites[Math.floor(Math.random() * petalSprites.length)];
+          this.size = 14 + Math.random() * 12;
+        } else {
+          this.sprite = flowerSprites[Math.floor(Math.random() * flowerSprites.length)];
+          this.size = 15 + Math.random() * 14;
+        }
+
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotSpeed = (Math.random() - 0.5) * 0.05;
+        this.swingAngle = Math.random() * Math.PI * 2;
+        this.swingSpeed = 0.025 + Math.random() * 0.03;
+        this.swingAmp = 0.8 + Math.random() * 1.2;
+        this.flipAngle = Math.random() * Math.PI;
+        this.flipSpeed = 0.035 + Math.random() * 0.035;
+        this.opacity = 1;
+      }
+
+      update() {
+        this.y += this.vy;
+        this.swingAngle += this.swingSpeed;
+        this.x += Math.sin(this.swingAngle) * this.swingAmp + this.vx;
+        this.rotation += this.rotSpeed;
+        this.flipAngle += this.flipSpeed;
+
+        if (this.y > treeH * 0.88) {
+          this.opacity -= 0.018;
+        }
+
+        if (this.opacity <= 0 || this.y > treeH + 30 || this.x < -30 || this.x > treeW + 30) {
+          if (animationState.treeCompleted) {
+            this.reset(false);
+          }
+        }
+      }
+
+      draw(ctx) {
+        if (this.opacity <= 0.01) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        // Simulación tridimensional rápida
+        const s3d = Math.cos(this.flipAngle);
+        ctx.scale(1, Math.abs(s3d) * 0.75 + 0.25);
+        ctx.globalAlpha = Math.max(0, this.opacity);
+
+        const half = this.size * 0.5;
+        ctx.drawImage(this.sprite, -half, -half, this.size, this.size);
+        ctx.restore();
+      }
+    }
+
+
+    // --- 6. BUCLE PRINCIPAL DE ANIMACIÓN A 60 FPS ULTRA FLUIDO ---
+    function animateTree() {
+      treeCtx.clearRect(0, 0, treeW, treeH);
+
+      // 1) Crecimiento de ramas
+      if (!animationState.branchesDone) {
+        animationState.progressBranches += 0.014;
+        if (animationState.progressBranches >= 1) {
+          animationState.progressBranches = 1;
+          animationState.branchesDone = true;
+        }
+      }
+
+      const totalBranches = branchSegments.length;
+      const branchesToDraw = Math.floor(animationState.progressBranches * totalBranches);
+
+      for (let i = 0; i < totalBranches; i++) {
+        const b = branchSegments[i];
+        if (i <= branchesToDraw) {
+          treeCtx.strokeStyle = b.color;
+          treeCtx.lineWidth = b.thickness;
+          treeCtx.lineCap = 'round';
+
+          treeCtx.beginPath();
+          treeCtx.moveTo(b.x1, b.y1);
+          if (i === branchesToDraw && !animationState.branchesDone) {
+            const frac = (animationState.progressBranches * totalBranches) - branchesToDraw;
+            treeCtx.lineTo(b.x1 + (b.x2 - b.x1) * frac, b.y1 + (b.y2 - b.y1) * frac);
+          } else {
+            treeCtx.lineTo(b.x2, b.y2);
+          }
+          treeCtx.stroke();
+        }
+      }
+
+      // 2) Hojas verdes brotando
+      if (animationState.branchesDone && !animationState.leavesDone) {
+        animationState.progressLeaves += 0.04;
+        for (let j = 0; j < treeLeaves.length; j++) {
+          const leaf = treeLeaves[j];
+          if (leaf.scale < leaf.maxScale) {
+            leaf.scale += 0.5;
+          }
+        }
+        if (animationState.progressLeaves >= 1) {
+          animationState.leavesDone = true;
+        }
+      }
+
+      for (let j = 0; j < treeLeaves.length; j++) {
+        const leaf = treeLeaves[j];
+        if (leaf.scale > 0.2) {
+          treeCtx.save();
+          treeCtx.translate(leaf.x, leaf.y);
+          treeCtx.rotate(leaf.angle);
+          treeCtx.fillStyle = leaf.color;
+          treeCtx.beginPath();
+          treeCtx.ellipse(0, 0, leaf.scale * 0.45, leaf.scale, 0, 0, Math.PI * 2);
+          treeCtx.fill();
+          treeCtx.restore();
+        }
+      }
+
+      // 3) Flores brotando en ráfagas suaves
+      if (animationState.leavesDone && animationState.flowersBlooming) {
+        const flowersPerStep = 4;
+        for (let k = 0; k < flowersPerStep; k++) {
+          if (animationState.flowerIndex < treeFlowers.length) {
+            treeFlowers[animationState.flowerIndex].bloomed = true;
+            animationState.flowerIndex++;
+          } else {
+            animationState.flowersBlooming = false;
+            setTimeout(() => {
+              animationState.treeCompleted = true;
+              for (let f = 0; f < 38; f++) {
+                fallingFlowers.push(new FallingYellowFlower());
+              }
+            }, 400);
+            break;
+          }
+        }
+      }
+
+      // 4) Renderizado acelerado de flores con Sprites cacheados
+      for (let i = 0; i < treeFlowers.length; i++) {
+        const fl = treeFlowers[i];
+        if (fl.bloomed) {
+          if (fl.currentScale < 1) {
+            fl.currentScale += fl.bloomSpeed;
+            if (fl.currentScale > 1) fl.currentScale = 1;
+          }
+
+          fl.shimmerPhase += 0.035;
+          const shimmer = 1 + Math.sin(fl.shimmerPhase) * 0.04;
+          const currentSize = fl.size * fl.currentScale * shimmer;
+          const half = currentSize * 0.5;
+
+          treeCtx.save();
+          treeCtx.translate(fl.x, fl.y);
+          treeCtx.rotate(fl.rotation);
+          treeCtx.drawImage(fl.sprite, -half, -half, currentSize, currentSize);
+          treeCtx.restore();
+        }
+      }
+
+      // 5) Renderizado de flores y pétalos cayendo
+      for (let i = 0; i < fallingFlowers.length; i++) {
+        fallingFlowers[i].update();
+        fallingFlowers[i].draw(treeCtx);
+      }
+
+      if (animationState.treeCompleted && fallingFlowers.length < 50 && Math.random() < 0.16) {
+        fallingFlowers.push(new FallingYellowFlower());
+      }
+
+      // 6) Chispas interactivas al hacer clic / tap
+      for (let i = clickSparks.length - 1; i >= 0; i--) {
+        const s = clickSparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.08;
+        s.opacity -= 0.022;
+
+        if (s.opacity <= 0) {
+          clickSparks.splice(i, 1);
+          continue;
+        }
+
+        treeCtx.save();
+        treeCtx.translate(s.x, s.y);
+        treeCtx.globalAlpha = Math.max(0, s.opacity);
+
+        if (s.isHeart) {
+          treeCtx.fillStyle = '#ff4081';
+          const sz = s.size;
+          treeCtx.beginPath();
+          treeCtx.moveTo(0, sz * 0.3);
+          treeCtx.bezierCurveTo(-sz * 0.7, -sz * 0.5, -sz * 1.2, sz * 0.3, 0, sz * 1.1);
+          treeCtx.bezierCurveTo(sz * 1.2, sz * 0.3, sz * 0.7, -sz * 0.5, 0, sz * 0.3);
+          treeCtx.fill();
+        } else {
+          treeCtx.fillStyle = '#ffeb3b';
+          treeCtx.beginPath();
+          treeCtx.arc(0, 0, s.size, 0, Math.PI * 2);
+          treeCtx.fill();
+        }
+        treeCtx.restore();
+      }
+
+      requestAnimationFrame(animateTree);
+    }
+
+
+    // --- 7. INTERACTIVIDAD MÁGICA: BURST DE FLORES Y CORAZONES ---
+    function spawnLoveBurst(clientX, clientY) {
+      const rect = treeCanvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      for (let i = 0; i < 18; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2.5 + Math.random() * 4.5;
+        clickSparks.push({
+          x: x,
+          y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          size: 3 + Math.random() * 5,
+          opacity: 1,
+          isHeart: Math.random() > 0.4
+        });
+      }
+
+      if (fallingFlowers.length < 85) {
+        for (let j = 0; j < 4; j++) {
+          fallingFlowers.push(new FallingYellowFlower(true, x, y));
+        }
+      }
+    }
+
+    cardContainer.addEventListener('pointerdown', (e) => {
+      // Ignorar si se hace clic en los botones de control
+      if (e.target.closest('.floating-controls')) return;
+      spawnLoveBurst(e.clientX, e.clientY);
+    });
+
+
+    // --- 8. MÚSICA ROMÁNTICA SINTETIZADA CON WEB AUDIO API (PURO) ---
+    let audioCtx = null;
+    let isPlayingMusic = false;
+    let musicInterval = null;
+    const musicBtn = document.getElementById('musicBtn');
+    const musicIcon = document.getElementById('musicIcon');
+
+    const melodyNotes = [
+      523.25, 659.25, 783.99, 659.25, 880.00, 783.99, 659.25, 587.33,
+      523.25, 587.33, 659.25, 783.99, 698.46, 659.25, 587.33, 523.25,
+      659.25, 783.99, 880.00, 1046.50, 987.77, 880.00, 783.99, 659.25,
+      587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33, 523.25
+    ];
+    let noteIdx = 0;
+
+    function playNote(freq, duration = 0.6) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function toggleMusic() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      if (!isPlayingMusic) {
+        isPlayingMusic = true;
+        musicIcon.textContent = "🔊";
+        musicBtn.style.background = "#ffecb3";
+        noteIdx = 0;
+        musicInterval = setInterval(() => {
+          const currentFreq = melodyNotes[noteIdx % melodyNotes.length];
+          playNote(currentFreq, 0.7);
+          noteIdx++;
+        }, 420);
+      } else {
+        isPlayingMusic = false;
+        musicIcon.textContent = "🎵";
+        musicBtn.style.background = "rgba(255, 255, 255, 0.88)";
+        if (musicInterval) clearInterval(musicInterval);
+      }
+    }
+
+    musicBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMusic();
+    });
+
+    // Reiniciar animación
+    const restartBtn = document.getElementById('restartBtn');
+    restartBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      initTree();
+    });
+
+
+    // --- 9. INICIALIZACIÓN ---
+    window.addEventListener('DOMContentLoaded', () => {
+      resizeTreeCanvas();
+      initTree();
+      animateTree();
+    });
+  </script>
+</body>
+</html>
