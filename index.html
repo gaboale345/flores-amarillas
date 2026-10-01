@@ -440,87 +440,104 @@
       };
     }
 
+    // Curva del borde superior del corazón para recortar ramas rebeldes
+    function getHeartBoundaryY(x, targetX, targetY, scale) {
+      const dx = (x - targetX) / (16 * scale);
+      if (Math.abs(dx) > 1) return targetY;
+      // Aproximación del lóbulo superior
+      const t = Math.asin(Math.cbrt(Math.max(-1, Math.min(1, dx))));
+      const rawY = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+      return targetY + rawY * scale;
+    }
+
     function createTreeBranchStructure(baseX, baseY, targetHeartCenter, heartScale) {
       branchSegments = [];
       treeLeaves = [];
       treeFlowers = [];
 
       function addBranch(x1, y1, angle, length, thickness, depth, maxDepth) {
-        const x2 = x1 + Math.cos(angle) * length;
-        const y2 = y1 + Math.sin(angle) * length;
+        let x2 = x1 + Math.cos(angle) * length;
+        let y2 = y1 + Math.sin(angle) * length;
+
+        // Limitar la altura de las ramas para que NUNCA sobrepasen la curva superior del corazón
+        const maxY = targetHeartCenter.y - 13.5 * heartScale;
+        if (y2 < maxY) {
+          y2 = maxY + Math.random() * 2;
+        }
 
         branchSegments.push({
           x1, y1, x2, y2,
           thickness,
           depth,
-          color: depth < 2 ? '#4a260d' : (depth < 4 ? '#633716' : '#7b461e')
+          color: depth < 2 ? '#44230c' : (depth < 4 ? '#5c3214' : '#73401c')
         });
 
         if (depth < maxDepth) {
-          const subBranches = depth === 0 ? 3 : (Math.random() > 0.3 ? 2 : 3);
-          for (let i = 0; i < subBranches; i++) {
-            const spread = 0.50 - depth * 0.06;
-            let nextAngle = angle + (Math.random() - 0.5) * spread * 2;
-            
-            // Guiar ramas armónicamente hacia la silueta del corazón
-            if (x2 < targetHeartCenter.x) {
-              nextAngle = Math.min(nextAngle, -Math.PI * 0.46);
-              nextAngle = Math.max(nextAngle, -Math.PI * 0.84);
+          // Bifurcación balanceada
+          const numSub = depth === 0 ? 3 : (depth < 3 ? 2 : (Math.random() > 0.4 ? 2 : 1));
+          for (let i = 0; i < numSub; i++) {
+            let nextAngle;
+            if (depth === 0) {
+              // Desde el tronco principal, ramas principales hacia la izquierda, centro y derecha
+              const angles = [-Math.PI * 0.68, -Math.PI * 0.50, -Math.PI * 0.32];
+              nextAngle = angles[i];
             } else {
-              nextAngle = Math.max(nextAngle, -Math.PI * 0.54);
-              nextAngle = Math.min(nextAngle, -Math.PI * 0.16);
+              const spread = 0.42 - depth * 0.05;
+              nextAngle = angle + (i === 0 ? -spread : spread) * (0.8 + Math.random() * 0.4);
             }
 
-            const nextLength = length * (0.64 + Math.random() * 0.18);
-            const nextThick = Math.max(2, thickness * 0.65);
+            const nextLength = length * (0.64 + Math.random() * 0.16);
+            const nextThick = Math.max(1.5, thickness * 0.64);
             addBranch(x2, y2, nextAngle, nextLength, nextThick, depth + 1, maxDepth);
           }
         } else {
-          // Hojas verdes en brotes
-          for (let l = 0; l < 3; l++) {
+          // Hojas verdes delicadas en las puntas dentro de la silueta
+          for (let l = 0; l < 2; l++) {
             treeLeaves.push({
-              x: x2 + (Math.random() - 0.5) * 16,
-              y: y2 + (Math.random() - 0.5) * 16,
+              x: x2 + (Math.random() - 0.5) * (10 * (heartScale / 9)),
+              y: y2 + (Math.random() - 0.5) * (10 * (heartScale / 9)),
               angle: Math.random() * Math.PI * 2,
               scale: 0,
-              maxScale: 5 + Math.random() * 4,
+              maxScale: 3.5 + Math.random() * 3,
               color: Math.random() > 0.5 ? '#558b2f' : '#689f38'
             });
           }
         }
       }
 
-      // Tronco centrado proporcional al alto de pantalla
-      const trunkLength = treeH * 0.22;
-      addBranch(baseX, baseY, -Math.PI / 2, trunkLength, 22, 0, 5);
+      // Tronco con longitud armónica
+      const trunkLength = heartScale * 8.5;
+      const trunkStartX = baseX;
+      const trunkStartY = baseY;
+      addBranch(trunkStartX, trunkStartY, -Math.PI / 2, trunkLength, Math.min(22, heartScale * 2.2), 0, 5);
 
-      // Generar 430 flores amarillas tupidas formando el corazón perfecto
-      const TOTAL_HEART_FLOWERS = 430;
+      // Generar 500 flores amarillas tupidas formando el corazón completo y simétrico
+      const TOTAL_HEART_FLOWERS = 500;
       for (let i = 0; i < TOTAL_HEART_FLOWERS; i++) {
         let pt;
-        // 32% refuerzan el perímetro del corazón para una silueta nítida
-        if (i < 140) {
-          const t = (i / 140) * Math.PI * 2;
+        // 40% refuerzan el contorno exacto del corazón (especialmente los lóbulos superiores y bordes laterales)
+        if (i < 200) {
+          const t = (i / 200) * Math.PI * 2;
           const rawX = 16 * Math.pow(Math.sin(t), 3);
           const rawY = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
-          const jitter = 0.94 + Math.random() * 0.10;
+          const jitter = 0.96 + Math.random() * 0.08;
           pt = {
-            x: targetHeartCenter.x + rawX * heartScale * jitter + (Math.random() - 0.5) * 3,
-            y: targetHeartCenter.y + rawY * heartScale * jitter + (Math.random() - 0.5) * 3
+            x: targetHeartCenter.x + rawX * heartScale * jitter + (Math.random() - 0.5) * 2,
+            y: targetHeartCenter.y + rawY * heartScale * jitter + (Math.random() - 0.5) * 2
           };
         } else {
           // Relleno interior uniforme
-          pt = getHeartPoint(heartScale * 0.95, targetHeartCenter.x, targetHeartCenter.y);
+          pt = getHeartPoint(heartScale * 0.96, targetHeartCenter.x, targetHeartCenter.y);
         }
 
         const spriteIdx = Math.floor(Math.random() * flowerSprites.length);
-        const targetRadius = 9 + Math.random() * 10;
+        const targetRadius = (heartScale * 0.95) + Math.random() * (heartScale * 0.85);
 
         treeFlowers.push({
           x: pt.x,
           y: pt.y,
           sprite: flowerSprites[spriteIdx],
-          size: targetRadius * 2, // tamaño en píxeles al dibujar
+          size: Math.max(14, targetRadius * 2),
           currentScale: 0,
           rotation: Math.random() * Math.PI * 2,
           bloomed: false,
@@ -538,16 +555,31 @@
     }
 
     function initTree() {
-      // Centrado exacto: la copa del corazón queda armónicamente en el centro visual
+      const isPortrait = treeH > treeW * 1.15;
+
+      let heartScale;
+      if (isPortrait) {
+        // En móviles, escala generosa para llenar armónicamente el ancho de pantalla
+        heartScale = Math.min(treeW * 0.027, treeH * 0.016);
+      } else {
+        // En escritorio
+        heartScale = Math.min(treeW * 0.023, treeH * 0.022);
+      }
+
+      // Posición del corazón: elevado a ~0.29 en vertical
+      const heartCenterY = isPortrait ? (treeH * 0.29) : (treeH * 0.35);
+
       const targetHeartCenter = {
         x: treeW * 0.5,
-        y: treeH * 0.42
+        y: heartCenterY
       };
-      const baseX = treeW * 0.5;
-      const baseY = treeH * 0.92;
-      const heartScale = Math.min(treeW, treeH) * 0.023;
 
-      createTreeBranchStructure(baseX, baseY, targetHeartCenter, heartScale);
+      // Altura del tronco perfectamente acoplada debajo de la punta del corazón
+      const heartTipY = heartCenterY + 15.5 * heartScale;
+      const trunkLen = heartScale * 8.5;
+      const baseY = Math.min(treeH * 0.82, heartTipY + trunkLen);
+
+      createTreeBranchStructure(treeW * 0.5, baseY, targetHeartCenter, heartScale);
 
       animationState = {
         progressBranches: 0,
